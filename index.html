@@ -2,54 +2,34 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<meta name="theme-color" content="#0A0A12" media="(prefers-color-scheme: dark)"/>
-<meta name="theme-color" content="#F0F0F8" media="(prefers-color-scheme: light)"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<title>عاداتي — تتبع العادات</title>
+<meta name="theme-color" content="#0A0A12"/>
+<title>عاداتي</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap"/>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"/>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; overflow: hidden; }
-  body { font-family: 'Tajawal', sans-serif; direction: rtl; }
-  #root { height: 100%; }
-  ::-webkit-scrollbar { display: none; }
-  * { -ms-overflow-style: none; scrollbar-width: none; }
-  input::placeholder { opacity: .6; }
-  button { font-family: 'Tajawal', sans-serif; }
-  button:active { opacity: .75 !important; transform: scale(.97) !important; }
-  @keyframes fadeSlideIn {
-    from { opacity: 0; transform: translateY(14px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes popIn {
-    0%   { transform: scale(.6); opacity: 0; }
-    70%  { transform: scale(1.15); }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  @keyframes ringFill { from { stroke-dashoffset: var(--full); } }
-  .fade-in  { animation: fadeSlideIn .35s ease both; }
-  .pop-in   { animation: popIn .4s cubic-bezier(.175,.885,.32,1.275) both; }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;font-family:'Tajawal',sans-serif;direction:rtl;}
+::-webkit-scrollbar{display:none;}
+button{font-family:'Tajawal',sans-serif;cursor:pointer;}
+input{font-family:'Tajawal',sans-serif;}
+input::placeholder{opacity:.5;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+@keyframes popIn{0%{transform:scale(.5);opacity:0;}70%{transform:scale(1.1);}100%{transform:scale(1);opacity:1;}}
+.fade{animation:fadeUp .3s ease both;}
+.pop{animation:popIn .3s cubic-bezier(.175,.885,.32,1.275) both;}
 </style>
 </head>
 <body>
-<div id="root"></div>
-<script type="text/babel">
-const { useState, useEffect, useMemo, useCallback } = React;
-const { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } = Recharts;
+<div id="app" style="height:100vh;display:flex;justify-content:center;"></div>
+<script>
+"use strict";
 
-/* ═══════════════════════════════════════
-   UTILS
-═══════════════════════════════════════ */
-const fmt   = d => new Date(d).toISOString().split("T")[0];
+// ═══ UTILS ═══
+const fmt = d => new Date(d).toISOString().split("T")[0];
 const today = () => fmt(new Date());
-const ago   = n => { const d = new Date(); d.setDate(d.getDate() - n); return fmt(d); };
+const ago = n => { const d = new Date(); d.setDate(d.getDate() - n); return fmt(d); };
 
 function calcStreak(c) {
   const t = today(), s0 = c[t] ? 0 : 1;
@@ -67,418 +47,577 @@ function calcStreak(c) {
   return { cur, best: Math.max(best, cur), rate: Math.round(d30 / 30 * 100) };
 }
 
-function seedComp(r = 0.8, n = 40) {
+function seed(r, n) {
+  r = r || 0.8; n = n || 40;
   const c = {};
   for (let i = 1; i <= n; i++) if (Math.random() < r) c[ago(i)] = true;
   return c;
 }
 
-/* ═══════════════════════════════════════
-   CONSTANTS
-═══════════════════════════════════════ */
+// ═══ DATA ═══
 const CATS = {
-  health:       { l:"صحة ورياضة",      e:"🏋️", c:"#FF6B6B", bg:"rgba(255,107,107,.14)" },
-  learning:     { l:"تعلم وقراءة",      e:"📚", c:"#4ECDC4", bg:"rgba(78,205,196,.14)"  },
-  mindfulness:  { l:"تأمل وصحة نفسية", e:"🧘", c:"#B39DDB", bg:"rgba(179,157,219,.14)" },
-  productivity: { l:"إنتاجية وعمل",     e:"💼", c:"#FFD93D", bg:"rgba(255,217,61,.14)"  },
+  health:       { l: "صحة ورياضة",      e: "🏋️", c: "#FF6B6B", bg: "rgba(255,107,107,.14)" },
+  learning:     { l: "تعلم وقراءة",      e: "📚",  c: "#4ECDC4", bg: "rgba(78,205,196,.14)"  },
+  mindfulness:  { l: "تأمل وصحة نفسية", e: "🧘",  c: "#B39DDB", bg: "rgba(179,157,219,.14)" },
+  productivity: { l: "إنتاجية وعمل",     e: "💼",  c: "#FFD93D", bg: "rgba(255,217,61,.14)"  }
 };
 const ICONS = {
   health:       ["🏃","🏋️","💪","🚴","🥗","💧","😴","🧗"],
   learning:     ["📚","✍️","💻","🎨","🎵","🔬","📐","🎯"],
   mindfulness:  ["🧘","🌿","🫁","🙏","🌅","💆","🌸","☕"],
-  productivity: ["📝","⏰","🎯","📊","🚀","✅","📌","🗂️"],
+  productivity: ["📝","⏰","🎯","📊","🚀","✅","📌","🗂️"]
 };
-const DAYS_AR   = ["أحد","إثن","ثلا","أرب","خمس","جمع","سبت"];
-const MONTHS_AR = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+const DAYS   = ["أحد","إثن","ثلا","أرب","خمس","جمع","سبت"];
+const MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 
-const INIT = () => [
-  { id:"h1", name:"تمرين الصباح",          cat:"health",       icon:"🏃", freq:"daily",    time:"07:00", after:null,  c:seedComp(.87,42), ts:Date.now()-42*864e5 },
-  { id:"h2", name:"قراءة ٢٠ دقيقة",        cat:"learning",     icon:"📚", freq:"daily",    time:"21:00", after:null,  c:seedComp(.80,36), ts:Date.now()-36*864e5 },
-  { id:"h3", name:"تأمل ومراقبة الأنفاس", cat:"mindfulness",  icon:"🧘", freq:"daily",    time:"06:30", after:"h1",  c:seedComp(.72,28), ts:Date.now()-28*864e5 },
-  { id:"h4", name:"مراجعة مهام اليوم",     cat:"productivity", icon:"📝", freq:"weekdays", time:"08:30", after:null,  c:seedComp(.85,21), ts:Date.now()-21*864e5 },
-];
-
-const TH = {
-  d: { bg:"#0A0A12", card:"#12121D", surf:"#1A1A28", bdr:"#25253C", tx:"#EEEEFF", sub:"#60608A", nav:"#0D0D18", inp:"#1A1A28" },
-  l: { bg:"#F0F0F8", card:"#FFFFFF", surf:"#E8E8F2", bdr:"#DCDCEC", tx:"#0A0A18", sub:"#7070A0", nav:"#FAFAFE", inp:"#F5F5FC" },
-};
-
-/* ═══════════════════════════════════════
-   APP
-═══════════════════════════════════════ */
-function App() {
-  const [dark, setDark] = useState(() => window.matchMedia("(prefers-color-scheme:dark)").matches);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme:dark)");
-    const h = e => setDark(e.matches);
-    mq.addEventListener("change", h);
-    return () => mq.removeEventListener("change", h);
-  }, []);
-  const T = dark ? TH.d : TH.l;
-
-  const [habits, setHabits] = useState(() => {
-    try { const s = localStorage.getItem("3adati_v1"); return s ? JSON.parse(s) : INIT(); }
-    catch { return INIT(); }
-  });
-  const [tab,    setTab]    = useState("home");
-  const [step,   setStep]   = useState(1);
-  const [draft,  setDraft]  = useState({ name:"", cat:"health", icon:"🏃", freq:"daily", time:"08:00", after:null });
-  const [menuId, setMenuId] = useState(null);
-  const [flash,  setFlash]  = useState(null);
-
-  useEffect(() => { try { localStorage.setItem("3adati_v1", JSON.stringify(habits)); } catch {} }, [habits]);
-  useEffect(() => {
-    if (!menuId) return;
-    const h = () => setMenuId(null);
-    setTimeout(() => document.addEventListener("click", h), 0);
-    return () => document.removeEventListener("click", h);
-  }, [menuId]);
-
-  const toggle = useCallback(id => {
-    const t = today();
-    setHabits(hs => hs.map(h => {
-      if (h.id !== id) return h;
-      const nc = { ...h.c };
-      const was = !!nc[t];
-      if (nc[t]) delete nc[t]; else nc[t] = true;
-      if (!was) { setFlash({ id, msg:"✓" }); setTimeout(() => setFlash(null), 1600); }
-      return { ...h, c: nc };
-    }));
-  }, []);
-
-  const saveHabit = () => {
-    if (!draft.name.trim()) return;
-    setHabits(hs => [...hs, { id:"h"+Date.now(), ...draft, c:{}, ts:Date.now() }]);
-    navTo("home");
-  };
-
-  const deleteHabit = id => { setHabits(hs => hs.filter(h => h.id !== id)); setMenuId(null); };
-
-  const navTo = dest => {
-    setTab(dest);
-    if (dest === "add") { setStep(1); setDraft({ name:"", cat:"health", icon:"🏃", freq:"daily", time:"08:00", after:null }); }
-  };
-
-  const todayCount = useMemo(() => {
-    const t = today(), done = habits.filter(h => h.c[t]).length;
-    return { done, total:habits.length, pct:habits.length ? done/habits.length : 0 };
-  }, [habits]);
-
-  const weekChart = useMemo(() => Array.from({ length:7 }, (_, i) => {
-    const d = ago(6-i), dt = new Date(d), done = habits.filter(h => h.c[d]).length;
-    return { day:DAYS_AR[dt.getDay()], pct:habits.length ? Math.round(done/habits.length*100) : 0, isToday:d===today() };
-  }), [habits]);
-
-  /* ─── HOME ─── */
-  const renderHome = () => {
-    const r = 44, circ = 2*Math.PI*r, t = today(), hr = new Date().getHours();
-    const greet = hr<5?"🌙 ليلة سعيدة":hr<12?"☀️ صباح الخير":hr<17?"🌤 مساء النور":"🌙 مساء الخير";
-    const dd = new Date();
-    return (
-      <div className="fade-in">
-        {/* Header */}
-        <div style={{ position:"sticky", top:0, zIndex:20, padding:"env(safe-area-inset-top,0px) 22px 16px", paddingTop:"max(env(safe-area-inset-top,0px), 52px)", background:dark?`${T.bg}EC`:`${T.bg}DC`, backdropFilter:"blur(28px)", WebkitBackdropFilter:"blur(28px)", borderBottom:`1px solid ${T.bdr}22` }}>
-          <div style={{ fontSize:11, color:T.sub, letterSpacing:.8, marginBottom:3 }}>{dd.getDate()} {MONTHS_AR[dd.getMonth()]} · {DAYS_AR[dd.getDay()]}</div>
-          <div style={{ fontSize:24, fontWeight:900, color:T.tx }}>{greet}</div>
-        </div>
-
-        {/* Progress Card */}
-        <div style={{ padding:"14px 14px 6px" }}>
-          <div style={{ background:dark?"linear-gradient(145deg,#12121D,#14143A)":"linear-gradient(145deg,#fff,#EEEEFF)", borderRadius:24, border:`1.5px solid ${todayCount.pct===1?"#4ECDC4AA":T.bdr}`, boxShadow:todayCount.pct===1?"0 8px 40px rgba(78,205,196,.22)":"0 4px 24px rgba(0,0,0,.12)", padding:"20px 22px", display:"flex", alignItems:"center", gap:18, transition:"all .5s" }}>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:10, color:T.sub, letterSpacing:.8, marginBottom:6, textTransform:"uppercase" }}>إنجاز اليوم</div>
-              <div style={{ display:"flex", alignItems:"baseline", gap:3, marginBottom:10 }}>
-                <span style={{ fontSize:58, fontWeight:900, color:T.tx, lineHeight:1, transition:"all .4s" }}>{todayCount.done}</span>
-                <span style={{ fontSize:20, color:T.sub, fontWeight:500 }}>/{todayCount.total}</span>
-              </div>
-              <div style={{ fontSize:12, color:T.sub, background:T.surf, borderRadius:10, padding:"5px 11px", display:"inline-block" }}>
-                {todayCount.pct===1?"🎉 أنجزت كل العادات!":todayCount.pct>=.75?"💪 قريب جداً من الإنجاز!":todayCount.pct>=.5?"🌟 أكثر من النصف!":todayCount.done===0?"🌱 ابدأ بخطوة صغيرة":"👣 استمر، أنت على الطريق!"}
-              </div>
-            </div>
-            <svg width={106} height={106} style={{ flexShrink:0 }}>
-              <circle cx={53} cy={53} r={r} fill="none" stroke={T.surf} strokeWidth={9}/>
-              <circle cx={53} cy={53} r={r} fill="none"
-                stroke={todayCount.pct===1?"#4ECDC4":todayCount.pct>=.5?"#B39DDB":"#FFD93D"}
-                strokeWidth={9} strokeLinecap="round"
-                strokeDasharray={circ}
-                strokeDashoffset={circ*(1-todayCount.pct)}
-                transform="rotate(-90 53 53)"
-                style={{ transition:"stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1),stroke .4s" }}
-              />
-              <text x={53} y={49} textAnchor="middle" dominantBaseline="middle" fill={T.tx} style={{ fontSize:20, fontWeight:900, fontFamily:"Tajawal" }}>{Math.round(todayCount.pct*100)}%</text>
-              <text x={53} y={65} textAnchor="middle" dominantBaseline="middle" fill={T.sub} style={{ fontSize:9, fontFamily:"Tajawal" }}>مكتمل</text>
-            </svg>
-          </div>
-        </div>
-
-        {/* Habit List */}
-        <div style={{ padding:"6px 14px" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 2px 12px" }}>
-            <span style={{ fontSize:15, fontWeight:800, color:T.tx }}>عاداتي اليومية</span>
-            <span style={{ fontSize:11, color:T.sub, background:T.surf, borderRadius:20, padding:"3px 10px" }}>{habits.length} عادة</span>
-          </div>
-
-          {habits.length === 0 ? (
-            <div style={{ textAlign:"center", padding:"60px 0" }}>
-              <div style={{ fontSize:60, marginBottom:14 }}>🌱</div>
-              <div style={{ fontSize:17, fontWeight:800, color:T.tx, marginBottom:8 }}>ابدأ رحلتك الآن</div>
-              <div style={{ fontSize:12, color:T.sub, lineHeight:1.9 }}>اضغط + لإضافة أول عادة</div>
-            </div>
-          ) : habits.map(h => {
-            const done = !!h.c[t], { cur, rate } = calcStreak(h.c), cat = CATS[h.cat];
-            const trail = Array.from({ length:7 }, (_, i) => ({ ok:!!h.c[ago(6-i)], isT:6-i===0 }));
-            const stacker = h.after ? habits.find(x => x.id===h.after) : null;
-            const mOpen = menuId === h.id, isFlash = flash?.id === h.id;
-            return (
-              <div key={h.id} style={{ position:"relative", marginBottom:9 }}>
-                <div style={{ background:isFlash?(dark?`${cat.c}1A`:cat.bg):T.card, borderRadius:20, border:`1.5px solid ${done?cat.c+"60":T.bdr}`, boxShadow:done?`0 4px 24px ${cat.c}15`:`0 2px 10px rgba(0,0,0,${dark?.2:.06})`, padding:"15px 14px 15px 16px", display:"flex", alignItems:"center", gap:12, transition:"all .3s ease" }}>
-                  <div style={{ position:"absolute", top:0, right:0, width:3, height:"100%", borderRadius:"0 20px 20px 0", background:done?cat.c:T.bdr, transition:"background .3s" }}/>
-                  {/* Toggle */}
-                  <div onClick={() => toggle(h.id)} style={{ width:50, height:50, borderRadius:14, flexShrink:0, cursor:"pointer", background:done?cat.c:T.surf, border:`2px solid ${done?cat.c:T.bdr}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:done?20:23, color:done?"#fff":"inherit", transition:"all .4s cubic-bezier(.175,.885,.32,1.275)", transform:done?"scale(1.08)":"scale(1)", userSelect:"none", WebkitUserSelect:"none" }}>{done?"✓":h.icon}</div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:7 }}>
-                      <div style={{ fontSize:14, fontWeight:700, color:done?T.sub:T.tx, textDecoration:done?"line-through":"none", transition:"color .3s", lineHeight:1.3 }}>
-                        {h.name}
-                        {stacker && <span style={{ fontSize:10, color:T.sub, marginRight:5 }}>📎{stacker.icon}</span>}
-                      </div>
-                      {cur > 0 && <div style={{ background:cat.bg, borderRadius:20, padding:"2px 8px", fontSize:12, fontWeight:700, color:cat.c, flexShrink:0, marginRight:3 }}>🔥{cur}</div>}
-                    </div>
-                    <div style={{ display:"flex", gap:5, alignItems:"center" }}>
-                      {trail.map((dot, i) => <div key={i} style={{ width:dot.isT?10:7, height:dot.isT?10:7, borderRadius:"50%", background:dot.ok?cat.c:T.surf, border:dot.isT?`2px solid ${dot.ok?cat.c:T.sub+"50"}`:"none", opacity:dot.ok?1:.28, transition:"all .2s" }}/>)}
-                      <span style={{ fontSize:11, color:T.sub, marginRight:4 }}>{rate}%</span>
-                      {h.time && <span style={{ fontSize:10, color:T.sub, marginRight:"auto", opacity:.7 }}>⏰ {h.time}</span>}
-                    </div>
-                  </div>
-                  <button onClick={e => { e.stopPropagation(); setMenuId(mOpen?null:h.id); }} style={{ background:"none", border:"none", color:T.sub, fontSize:20, cursor:"pointer", padding:"4px 5px", lineHeight:1, flexShrink:0, borderRadius:8, opacity:.6 }}>⋯</button>
-                </div>
-                {mOpen && (
-                  <div onClick={e => e.stopPropagation()} className="pop-in" style={{ position:"absolute", left:8, top:"calc(100% + 5px)", background:T.card, border:`1px solid ${T.bdr}`, borderRadius:14, padding:5, zIndex:60, minWidth:155, boxShadow:`0 12px 36px rgba(0,0,0,${dark?.55:.18})` }}>
-                    <button onClick={() => deleteHabit(h.id)} style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:"none", background:"none", color:"#FF6B6B", fontSize:14, fontWeight:600, cursor:"pointer", textAlign:"right", display:"flex", alignItems:"center", gap:8 }}>🗑 حذف العادة</button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  /* ─── STATS ─── */
-  const renderStats = () => {
-    const all = habits.map(h => ({ ...h, s:calcStreak(h.c) }));
-    const avgRate = all.length ? Math.round(all.reduce((a,h)=>a+h.s.rate,0)/all.length) : 0;
-    const bestStr = all.length ? Math.max(...all.map(h=>h.s.best)) : 0;
-    const totalC  = habits.reduce((a,h)=>a+Object.values(h.c).filter(Boolean).length, 0);
-    const insight = avgRate>=85?"🏆 أداء استثنائي! أنت في أعلى 10% من المستخدمين":avgRate>=70?"🌟 أداء ممتاز، واصل هذا المسار":avgRate>=50?"💡 أداء جيد، ركّز على السلاسل الطويلة":"🌱 كل رحلة تبدأ بخطوة، واصل المحاولة";
-    const heatmap = Array.from({ length:30 }, (_, i) => { const d=ago(29-i),done=habits.filter(h=>h.c[d]).length; return { d, pct:habits.length?done/habits.length:0, isToday:d===today() }; });
-    const monthly = Array.from({ length:4 }, (_, wk) => {
-      let sum=0, count=0;
-      for (let d=0; d<7; d++) { const day=ago(wk*7+d),done=habits.filter(h=>h.c[day]).length; if(habits.length){sum+=done/habits.length;count++;} }
-      return { label:`أسبوع ${4-wk}`, pct:count?Math.round(sum/count*100):0 };
-    });
-    return (
-      <div className="fade-in" style={{ padding:"56px 0 20px" }}>
-        <div style={{ padding:"0 22px 18px" }}>
-          <div style={{ fontSize:24, fontWeight:900, color:T.tx }}>التحليلات 📊</div>
-          <div style={{ fontSize:12, color:T.sub, marginTop:3 }}>نظرة شاملة على أدائك</div>
-        </div>
-        {/* Insight */}
-        <div style={{ padding:"0 14px 18px" }}>
-          <div style={{ background:dark?"linear-gradient(135deg,#1A1A2E,#16213E)":"linear-gradient(135deg,#EEF2FF,#E8F0FF)", borderRadius:18, padding:"15px 17px", border:`1px solid ${dark?"#2A2A5A":"#C8D0FF"}`, fontSize:13, color:T.tx, lineHeight:1.7, fontWeight:600 }}>{insight}</div>
-        </div>
-        {/* KPIs */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:9, padding:"0 14px 18px" }}>
-          {[{icon:"📊",val:`${avgRate}%`,lbl:"معدل ٣٠ يوم"},{icon:"🔥",val:bestStr,lbl:"أفضل سلسلة"},{icon:"✅",val:totalC,lbl:"إجمالي الإنجازات"}].map((s,i) => (
-            <div key={i} style={{ background:dark?`linear-gradient(145deg,${T.card},${T.surf})`:"linear-gradient(145deg,#fff,#f2f2ff)", borderRadius:20, border:`1px solid ${T.bdr}`, padding:"16px 10px", textAlign:"center" }}>
-              <div style={{ fontSize:26, marginBottom:7 }}>{s.icon}</div>
-              <div style={{ fontSize:21, fontWeight:900, color:T.tx }}>{s.val}</div>
-              <div style={{ fontSize:9, color:T.sub, marginTop:3, lineHeight:1.4 }}>{s.lbl}</div>
-            </div>
-          ))}
-        </div>
-        {/* Weekly Bar */}
-        <div style={{ padding:"0 14px 18px" }}>
-          <div style={{ background:T.card, borderRadius:20, border:`1px solid ${T.bdr}`, padding:"18px" }}>
-            <div style={{ fontSize:14, fontWeight:700, color:T.tx, marginBottom:14 }}>الإنجاز الأسبوعي</div>
-            <ResponsiveContainer width="100%" height={148}>
-              <BarChart data={weekChart} barSize={28} barCategoryGap="22%">
-                <XAxis dataKey="day" tick={{ fill:T.sub, fontSize:11, fontFamily:"Tajawal" }} axisLine={false} tickLine={false}/>
-                <Tooltip contentStyle={{ background:T.surf, border:"none", borderRadius:12, color:T.tx, fontFamily:"Tajawal", fontSize:12 }} formatter={v=>[`${v}%`,"الإنجاز"]} cursor={{ fill:`${T.surf}60` }}/>
-                <Bar dataKey="pct" radius={[8,8,3,3]}>
-                  {weekChart.map((e,i) => <Cell key={i} fill={e.isToday?"#4ECDC4":e.pct>=80?"#B39DDB":e.pct>=50?"#FFD93D":T.surf}/>)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        {/* Monthly */}
-        <div style={{ padding:"0 14px 18px" }}>
-          <div style={{ background:T.card, borderRadius:20, border:`1px solid ${T.bdr}`, padding:"18px" }}>
-            <div style={{ fontSize:14, fontWeight:700, color:T.tx, marginBottom:14 }}>الاتجاه الشهري</div>
-            <ResponsiveContainer width="100%" height={120}>
-              <BarChart data={monthly} barSize={38}>
-                <XAxis dataKey="label" tick={{ fill:T.sub, fontSize:11, fontFamily:"Tajawal" }} axisLine={false} tickLine={false}/>
-                <Tooltip contentStyle={{ background:T.surf, border:"none", borderRadius:12, color:T.tx, fontFamily:"Tajawal", fontSize:12 }} formatter={v=>[`${v}%`,"الإنجاز"]} cursor={{ fill:`${T.surf}60` }}/>
-                <Bar dataKey="pct" radius={[8,8,3,3]}>
-                  {monthly.map((_,i) => <Cell key={i} fill={i===3?"#4ECDC4":"#B39DDB55"}/>)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        {/* Heatmap */}
-        <div style={{ padding:"0 14px 18px" }}>
-          <div style={{ background:T.card, borderRadius:20, border:`1px solid ${T.bdr}`, padding:"18px" }}>
-            <div style={{ fontSize:14, fontWeight:700, color:T.tx, marginBottom:12 }}>خريطة آخر ٣٠ يوماً</div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(10,1fr)", gap:5 }}>
-              {heatmap.map((cell, i) => <div key={i} style={{ aspectRatio:"1", borderRadius:6, background:cell.pct===0?T.surf:cell.pct<.4?"#FFD93D35":cell.pct<.75?"#4ECDC455":"#4ECDC4", border:cell.isToday?"2px solid #4ECDC4":"none", transition:"all .2s" }}/>)}
-            </div>
-            <div style={{ display:"flex", gap:12, marginTop:10, justifyContent:"flex-end" }}>
-              {[["أقل",T.surf],["متوسط","#FFD93D35"],["جيد","#4ECDC455"],["ممتاز","#4ECDC4"]].map(([l,c]) => (
-                <div key={l} style={{ display:"flex", alignItems:"center", gap:3, fontSize:9, color:T.sub }}>
-                  <div style={{ width:9, height:9, borderRadius:2, background:c }}/>{l}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        {/* Per-habit */}
-        <div style={{ padding:"0 14px" }}>
-          <div style={{ fontSize:14, fontWeight:700, color:T.tx, marginBottom:10 }}>أداء كل عادة</div>
-          {all.map(h => { const cat = CATS[h.cat]; return (
-            <div key={h.id} style={{ background:T.card, borderRadius:18, border:`1px solid ${T.bdr}`, padding:"15px", marginBottom:9 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:11 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <div style={{ width:42, height:42, borderRadius:12, background:cat.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:21 }}>{h.icon}</div>
-                  <div>
-                    <div style={{ fontSize:13, fontWeight:700, color:T.tx }}>{h.name}</div>
-                    <div style={{ fontSize:10, color:T.sub }}>{cat.l}</div>
-                  </div>
-                </div>
-                <div style={{ display:"flex", gap:12, textAlign:"center" }}>
-                  {[["🔥"+h.s.cur,"حالية",cat.c],[h.s.best,"أفضل",T.tx],[h.s.rate+"%","٣٠ي",T.tx]].map(([v,l,c],i) => (
-                    <div key={i}><div style={{ fontSize:14, fontWeight:800, color:c }}>{v}</div><div style={{ fontSize:8, color:T.sub }}>{l}</div></div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ background:T.surf, borderRadius:4, height:5, overflow:"hidden" }}>
-                <div style={{ width:`${h.s.rate}%`, height:"100%", background:`linear-gradient(90deg,${cat.c}50,${cat.c})`, borderRadius:4, transition:"width 1s ease" }}/>
-              </div>
-            </div>
-          );})}
-        </div>
-      </div>
-    );
-  };
-
-  /* ─── ADD HABIT ─── */
-  const renderAdd = () => {
-    const cat = CATS[draft.cat];
-    const inp = { width:"100%", padding:"13px 15px", background:T.inp, border:`1.5px solid ${T.bdr}`, borderRadius:14, color:T.tx, fontSize:15, outline:"none", direction:"rtl" };
-    const si = [{t:"اسم العادة والفئة",s:"ما العادة التي تريد بناءها؟"},{t:"الأيقونة والتكرار",s:"كيف تريد ممارستها؟"},{t:"التوقيت والتكديس",s:"متى وبعد أي عادة؟"}][step-1];
-    const freqs = [{id:"daily",l:"يومياً",d:"كل يوم"},{id:"weekdays",l:"أيام العمل",d:"الإثنين → الجمعة"},{id:"weekends",l:"نهاية الأسبوع",d:"الجمعة والسبت"}];
-    return (
-      <div className="fade-in" style={{ padding:"56px 0 20px" }}>
-        <div style={{ padding:"0 22px 18px" }}>
-          <button onClick={() => navTo("home")} style={{ background:"none", border:"none", color:T.sub, fontSize:13, cursor:"pointer", padding:0, marginBottom:10 }}>← إلغاء</button>
-          <div style={{ fontSize:22, fontWeight:900, color:T.tx }}>{si.t}</div>
-          <div style={{ fontSize:12, color:T.sub, marginTop:3 }}>{si.s}</div>
-          <div style={{ display:"flex", gap:7, marginTop:14 }}>
-            {[1,2,3].map(n => <div key={n} style={{ height:4, flex:1, borderRadius:3, background:n<=step?cat.c:T.surf, transition:"background .3s" }}/>)}
-          </div>
-        </div>
-        <div style={{ padding:"0 14px" }}>
-          {step===1 && (
-            <div>
-              <input value={draft.name} onChange={e => setDraft(d => ({...d,name:e.target.value}))} placeholder="مثال: تمرين الصباح" style={inp} autoFocus/>
-              <div style={{ fontSize:12, color:T.sub, margin:"18px 0 10px" }}>اختر الفئة</div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:9 }}>
-                {Object.entries(CATS).map(([k,v]) => (
-                  <div key={k} onClick={() => setDraft(d => ({...d,cat:k,icon:ICONS[k][0]}))} style={{ background:draft.cat===k?v.bg:T.card, border:`2px solid ${draft.cat===k?v.c:T.bdr}`, borderRadius:16, padding:"15px 13px", display:"flex", alignItems:"center", gap:9, cursor:"pointer", transition:"all .2s" }}>
-                    <span style={{ fontSize:22 }}>{v.e}</span>
-                    <span style={{ fontSize:12, fontWeight:700, color:draft.cat===k?v.c:T.tx }}>{v.l}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {step===2 && (
-            <div>
-              <div style={{ fontSize:12, color:T.sub, marginBottom:10 }}>اختر أيقونة</div>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:22 }}>
-                {ICONS[draft.cat].map(ic => (
-                  <div key={ic} onClick={() => setDraft(d => ({...d,icon:ic}))} style={{ width:52, height:52, borderRadius:14, fontSize:24, display:"flex", alignItems:"center", justifyContent:"center", background:draft.icon===ic?cat.bg:T.surf, border:`2px solid ${draft.icon===ic?cat.c:T.bdr}`, cursor:"pointer", transition:"all .2s", transform:draft.icon===ic?"scale(1.12)":"scale(1)" }}>{ic}</div>
-                ))}
-              </div>
-              <div style={{ fontSize:12, color:T.sub, marginBottom:10 }}>التكرار</div>
-              {freqs.map(f => (
-                <div key={f.id} onClick={() => setDraft(d => ({...d,freq:f.id}))} style={{ background:draft.freq===f.id?cat.bg:T.card, border:`2px solid ${draft.freq===f.id?cat.c:T.bdr}`, borderRadius:14, padding:"13px 15px", marginBottom:8, cursor:"pointer", transition:"all .2s", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <div style={{ fontSize:14, fontWeight:600, color:T.tx }}>{f.l}</div>
-                  <div style={{ fontSize:11, color:T.sub }}>{f.d}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          {step===3 && (
-            <div>
-              <div style={{ fontSize:12, color:T.sub, marginBottom:8 }}>وقت التذكير الذكي</div>
-              <div style={{ background:T.surf, borderRadius:11, padding:"9px 13px", marginBottom:10, fontSize:11, color:T.sub, lineHeight:1.8 }}>🧠 سيتكيف التذكير تلقائياً مع وقت التزامك الفعلي</div>
-              <input type="time" value={draft.time} onChange={e => setDraft(d => ({...d,time:e.target.value}))} style={{ ...inp, marginBottom:20, colorScheme:dark?"dark":"light" }}/>
-              <div style={{ fontSize:12, color:T.sub, marginBottom:8 }}>تكديس العادات <span style={{ opacity:.45, fontSize:11 }}>(اختياري)</span></div>
-              <div style={{ background:T.surf, borderRadius:11, padding:"10px 13px", marginBottom:12, fontSize:11, color:T.sub, lineHeight:1.8 }}>💡 ربط عادة جديدة بعادة موجودة يرفع الالتزام 80% وفق البحث السلوكي</div>
-              {[null, ...habits].map((h, i) => (
-                <div key={i} onClick={() => setDraft(d => ({...d,after:h?.id||null}))} style={{ background:draft.after===(h?.id||null)?cat.bg:T.card, border:`2px solid ${draft.after===(h?.id||null)?cat.c:T.bdr}`, borderRadius:14, padding:"12px 15px", marginBottom:8, cursor:"pointer", transition:"all .2s", display:"flex", alignItems:"center", gap:11 }}>
-                  <span style={{ fontSize:21 }}>{h?h.icon:"🆓"}</span>
-                  <div>
-                    <div style={{ fontSize:13, fontWeight:600, color:T.tx }}>{h?`بعد: ${h.name}`:"بدون تكديس"}</div>
-                    {h && <div style={{ fontSize:10, color:T.sub }}>{CATS[h.cat].l}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{ display:"flex", gap:9, marginTop:22 }}>
-            {step > 1 && <button onClick={() => setStep(s=>s-1)} style={{ flex:1, padding:"13px", borderRadius:14, fontSize:14, fontWeight:700, background:T.surf, border:`1px solid ${T.bdr}`, color:T.sub, cursor:"pointer" }}>← السابق</button>}
-            <button
-              onClick={() => { if(step<3){if(step===1&&!draft.name.trim())return;setStep(s=>s+1);}else saveHabit(); }}
-              disabled={step===1 && !draft.name.trim()}
-              style={{ flex:2, padding:"13px", borderRadius:14, fontSize:14, fontWeight:700, background:(step===1&&!draft.name.trim())?T.surf:cat.c, border:"none", color:(step===1&&!draft.name.trim())?T.sub:"#0A0A12", cursor:"pointer", transition:"all .2s", opacity:(step===1&&!draft.name.trim())?.5:1 }}
-            >{step<3?"التالي ←":"✓ حفظ العادة"}</button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  /* ─── ROOT ─── */
-  return (
-    <div style={{ fontFamily:"Tajawal,sans-serif", direction:"rtl", width:"100%", height:"100vh", background:T.bg, color:T.tx, display:"flex", justifyContent:"center" }}>
-      <div style={{ width:"100%", maxWidth:430, height:"100vh", display:"flex", flexDirection:"column", position:"relative" }}>
-        {/* Scrollable content */}
-        <div style={{ flex:1, overflowY:"auto", paddingBottom:90 }}>
-          {tab==="home"  && renderHome()}
-          {tab==="stats" && renderStats()}
-          {tab==="add"   && renderAdd()}
-        </div>
-        {/* Bottom Nav */}
-        <nav style={{ position:"absolute", bottom:0, left:0, right:0, background:dark?`${T.nav}F2`:`${T.nav}F5`, backdropFilter:"blur(28px)", WebkitBackdropFilter:"blur(28px)", borderTop:`1px solid ${T.bdr}`, display:"flex", justifyContent:"space-around", alignItems:"center", paddingBottom:"max(env(safe-area-inset-bottom,0px),12px)", paddingTop:9, zIndex:100 }}>
-          <button onClick={() => setTab("home")} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3, color:tab==="home"?"#4ECDC4":T.sub, fontSize:10, fontWeight:700, padding:"4px 20px", transition:"color .2s" }}>
-            <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-            الرئيسية
-          </button>
-          <button onClick={() => navTo("add")} style={{ width:56, height:56, borderRadius:"50%", background:"linear-gradient(135deg,#4ECDC4,#3DBDB5)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, color:"#0A0A12", transform:"translateY(-12px)", boxShadow:"0 6px 26px rgba(78,205,196,.5),0 2px 8px rgba(0,0,0,.28)", flexShrink:0 }}>+</button>
-          <button onClick={() => setTab("stats")} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3, color:tab==="stats"?"#4ECDC4":T.sub, fontSize:10, fontWeight:700, padding:"4px 20px", transition:"color .2s" }}>
-            <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            إحصائيات
-          </button>
-        </nav>
-      </div>
-    </div>
-  );
+function defaultHabits() {
+  return [
+    { id:"h1", name:"تمرين الصباح",          cat:"health",       icon:"🏃", freq:"daily",    time:"07:00", after:null, c:seed(0.87,42) },
+    { id:"h2", name:"قراءة ٢٠ دقيقة",        cat:"learning",     icon:"📚", freq:"daily",    time:"21:00", after:null, c:seed(0.80,36) },
+    { id:"h3", name:"تأمل ومراقبة الأنفاس", cat:"mindfulness",  icon:"🧘", freq:"daily",    time:"06:30", after:"h1", c:seed(0.72,28) },
+    { id:"h4", name:"مراجعة مهام اليوم",     cat:"productivity", icon:"📝", freq:"weekdays", time:"08:30", after:null, c:seed(0.85,21) }
+  ];
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+// ═══ THEME ═══
+const isDark = () => window.matchMedia("(prefers-color-scheme:dark)").matches;
+function theme() {
+  return isDark()
+    ? { bg:"#0A0A12", card:"#12121D", surf:"#1A1A28", bdr:"#25253C", tx:"#EEEEFF", sub:"#60608A", nav:"#0D0D18", inp:"#1A1A28" }
+    : { bg:"#F0F0F8", card:"#FFFFFF", surf:"#E8E8F2", bdr:"#DCDCEC", tx:"#0A0A18", sub:"#7070A0", nav:"#FAFAFE", inp:"#F5F5FC" };
+}
+
+// ═══ STATE ═══
+var habits;
+try { var _s = localStorage.getItem("3adati_v3"); habits = _s ? JSON.parse(_s) : defaultHabits(); }
+catch(e) { habits = defaultHabits(); }
+
+var currentTab  = "home";
+var currentStep = 1;
+var draft = { name:"", cat:"health", icon:"🏃", freq:"daily", time:"08:00", after:null };
+var menuOpenId  = null;
+var flashId     = null;
+var flashTimer  = null;
+
+function saveHabits() {
+  try { localStorage.setItem("3adati_v3", JSON.stringify(habits)); } catch(e) {}
+}
+
+// ═══ DOM BUILDER ═══
+function mkEl(tag, style, kids) {
+  var e = document.createElement(tag);
+  if (style) Object.assign(e.style, style);
+  appendKids(e, kids);
+  return e;
+}
+
+function appendKids(parent, kids) {
+  if (!kids) return;
+  if (typeof kids === "string" || typeof kids === "number") {
+    parent.appendChild(document.createTextNode(String(kids)));
+    return;
+  }
+  if (Array.isArray(kids)) {
+    for (var i = 0; i < kids.length; i++) {
+      var k = kids[i];
+      if (k == null || k === false) continue;
+      if (typeof k === "string" || typeof k === "number") {
+        parent.appendChild(document.createTextNode(String(k)));
+      } else if (k && k.nodeType) {
+        parent.appendChild(k);
+      }
+    }
+    return;
+  }
+  if (kids && kids.nodeType) { parent.appendChild(kids); }
+}
+
+function div(style, kids, cls) {
+  var e = mkEl("div", style, kids);
+  if (cls) e.className = cls;
+  return e;
+}
+function span(txt, style) {
+  var e = mkEl("span", style, null);
+  e.textContent = String(txt);
+  return e;
+}
+function btn(label, style, onClick) {
+  var e = mkEl("button", style, null);
+  e.textContent = String(label);
+  e.addEventListener("click", onClick);
+  return e;
+}
+
+// SVG helpers
+function svgEl(tag, attrs) {
+  var e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  var keys = Object.keys(attrs);
+  for (var i = 0; i < keys.length; i++) e.setAttribute(keys[i], attrs[keys[i]]);
+  return e;
+}
+function makeSvg(w, h, kids) {
+  var s = svgEl("svg", { width:w, height:h, viewBox:"0 0 "+w+" "+h });
+  for (var i = 0; i < kids.length; i++) s.appendChild(kids[i]);
+  return s;
+}
+function svgText(x, y, txt, fill, fontSize, weight) {
+  var t = svgEl("text", { x:x, y:y, "text-anchor":"middle", "dominant-baseline":"middle", fill:fill });
+  t.style.cssText = "font-size:"+fontSize+"px;font-weight:"+(weight||400)+";font-family:Tajawal";
+  t.textContent = txt;
+  return t;
+}
+
+// ═══ HOME ═══
+function buildHome() {
+  var t = theme();
+  var td = today();
+  var hr = new Date().getHours();
+  var dd = new Date();
+  var greet = hr<5 ? "🌙 ليلة سعيدة" : hr<12 ? "☀️ صباح الخير" : hr<17 ? "🌤 مساء النور" : "🌙 مساء الخير";
+  var done  = 0;
+  for (var i = 0; i < habits.length; i++) if (habits[i].c[td]) done++;
+  var total = habits.length;
+  var pct   = total ? done / total : 0;
+  var r = 44, circ = 2 * Math.PI * r;
+  var rc = pct===1 ? "#4ECDC4" : pct>=0.5 ? "#B39DDB" : "#FFD93D";
+
+  // Ring SVG
+  var circle1 = svgEl("circle", { cx:53, cy:53, r:r, fill:"none", stroke:t.surf, "stroke-width":9 });
+  var circle2 = svgEl("circle", { cx:53, cy:53, r:r, fill:"none", stroke:rc, "stroke-width":9, "stroke-linecap":"round", "stroke-dasharray":circ, "stroke-dashoffset":circ*(1-pct), transform:"rotate(-90 53 53)" });
+  circle2.style.transition = "stroke-dashoffset 1s ease, stroke .4s";
+  var ring = makeSvg(106, 106, [circle1, circle2, svgText(53,49,Math.round(pct*100)+"%",t.tx,19,900), svgText(53,65,"مكتمل",t.sub,9,400)]);
+
+  var msg = pct===1 ? "🎉 أنجزت كل العادات!" : pct>=0.75 ? "💪 قريب جداً!" : pct>=0.5 ? "🌟 أكثر من النصف!" : done===0 ? "🌱 ابدأ بخطوة صغيرة" : "👣 استمر!";
+
+  var progressCard = div({
+    background: isDark() ? "linear-gradient(145deg,#12121D,#14143A)" : "linear-gradient(145deg,#fff,#EEEEFF)",
+    borderRadius:24, border:"1.5px solid "+(pct===1?"#4ECDC4AA":t.bdr),
+    boxShadow: pct===1 ? "0 8px 40px rgba(78,205,196,.22)" : "0 4px 24px rgba(0,0,0,.12)",
+    padding:"20px", display:"flex", alignItems:"center", gap:"16px"
+  }, [
+    div({flex:1}, [
+      span("إنجاز اليوم", {fontSize:10,color:t.sub,display:"block",letterSpacing:.8,marginBottom:6,textTransform:"uppercase"}),
+      div({display:"flex",alignItems:"baseline",gap:"3px",marginBottom:10}, [
+        span(done, {fontSize:52,fontWeight:900,color:t.tx,lineHeight:1}),
+        span("/"+total, {fontSize:18,color:t.sub})
+      ]),
+      span(msg, {fontSize:12,color:t.sub,background:t.surf,borderRadius:10,padding:"5px 11px",display:"inline-block"})
+    ]),
+    ring
+  ]);
+
+  // Habit cards
+  var cardList = [];
+  if (habits.length === 0) {
+    cardList.push(div({textAlign:"center",padding:"60px 0"}, [
+      span("🌱", {fontSize:56,display:"block",marginBottom:12}),
+      span("ابدأ رحلتك الآن", {fontSize:17,fontWeight:800,color:t.tx,display:"block",marginBottom:8}),
+      span("اضغط + لإضافة أول عادة", {fontSize:12,color:t.sub,display:"block"})
+    ]));
+  } else {
+    for (var hi = 0; hi < habits.length; hi++) {
+      cardList.push(buildHabitCard(habits[hi], t, td));
+    }
+  }
+
+  var wrapper = div({}, [
+    div({
+      position:"sticky", top:0, zIndex:20, padding:"52px 20px 16px",
+      background: isDark() ? "#0A0A12EC" : "#F0F0F8DC",
+      backdropFilter:"blur(28px)", WebkitBackdropFilter:"blur(28px)",
+      borderBottom:"1px solid "+t.bdr+"22"
+    }, [
+      span(dd.getDate()+" "+MONTHS[dd.getMonth()]+" · "+DAYS[dd.getDay()], {fontSize:11,color:t.sub,display:"block",letterSpacing:.8,marginBottom:3}),
+      span(greet, {fontSize:24,fontWeight:900,color:t.tx,display:"block"})
+    ]),
+    div({padding:"14px 14px 6px"}, [progressCard]),
+    div({padding:"6px 14px"}, [
+      div({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 2px 12px"}, [
+        span("عاداتي اليومية", {fontSize:15,fontWeight:800,color:t.tx}),
+        span(habits.length+" عادة", {fontSize:11,color:t.sub,background:t.surf,borderRadius:20,padding:"3px 10px"})
+      ])
+    ].concat(cardList))
+  ], "fade");
+  return wrapper;
+}
+
+function buildHabitCard(hab, t, td) {
+  var isDone  = !!hab.c[td];
+  var streak  = calcStreak(hab.c);
+  var cat     = CATS[hab.cat];
+  var isFlash = flashId === hab.id;
+  var mOpen   = menuOpenId === hab.id;
+  var stacker = null;
+  for (var i = 0; i < habits.length; i++) {
+    if (habits[i].id === hab.after) { stacker = habits[i]; break; }
+  }
+
+  // 7-day trail dots
+  var dots = [];
+  for (var di = 0; di < 7; di++) {
+    var isT = (6-di) === 0;
+    var ok  = !!hab.c[ago(6-di)];
+    dots.push(div({ width:isT?10:7, height:isT?10:7, borderRadius:"50%", background:ok?cat.c:t.surf,
+      border:isT?"2px solid "+(ok?cat.c:t.sub+"50"):"none", opacity:ok?1:.28, flexShrink:0 }, null));
+  }
+  dots.push(span(streak.rate+"%", {fontSize:11,color:t.sub,marginRight:4}));
+  if (hab.time) dots.push(span("⏰ "+hab.time, {fontSize:10,color:t.sub,marginRight:"auto",opacity:.7}));
+  var trail = div({display:"flex",gap:"5px",alignItems:"center"}, dots);
+
+  // Toggle button
+  var togBtn = div({ width:50, height:50, borderRadius:14, flexShrink:0, cursor:"pointer",
+    background:isDone?cat.c:t.surf, border:"2px solid "+(isDone?cat.c:t.bdr),
+    display:"flex", alignItems:"center", justifyContent:"center",
+    fontSize:isDone?20:23, color:isDone?"#fff":"inherit",
+    transition:"all .35s cubic-bezier(.175,.885,.32,1.275)", transform:isDone?"scale(1.08)":"scale(1)",
+    userSelect:"none", WebkitUserSelect:"none" }, [isDone?"✓":hab.icon]);
+  togBtn.addEventListener("click", (function(id){ return function(){ toggleHabit(id); }; })(hab.id));
+
+  // Name row
+  var nameKids = [hab.name];
+  if (stacker) nameKids.push(span(" 📎"+stacker.icon, {fontSize:10,color:t.sub,marginRight:4}));
+  var nameEl = div({fontSize:14,fontWeight:700,color:isDone?t.sub:t.tx,textDecoration:isDone?"line-through":"none",transition:"color .3s",lineHeight:1.3}, nameKids);
+
+  var streakBadge = null;
+  if (streak.cur > 0) {
+    streakBadge = span("🔥"+streak.cur, {background:cat.bg,borderRadius:20,padding:"2px 8px",fontSize:12,fontWeight:700,color:cat.c,flexShrink:0,marginRight:3});
+  }
+
+  var nameRow = div({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:7},
+    streakBadge ? [nameEl, streakBadge] : [nameEl]);
+
+  // Menu button
+  var menuBtn = div({fontSize:20,cursor:"pointer",padding:"4px 5px",lineHeight:1,flexShrink:0,borderRadius:8,opacity:.6,color:t.sub}, ["⋯"]);
+  menuBtn.addEventListener("click", (function(id){ return function(e){ e.stopPropagation(); menuOpenId = (menuOpenId===id)?null:id; rerender(); }; })(hab.id));
+
+  var cardBg = isFlash ? (isDark() ? cat.c+"1A" : cat.bg) : t.card;
+  var innerCard = div({
+    background:cardBg, borderRadius:20, border:"1.5px solid "+(isDone?cat.c+"60":t.bdr),
+    boxShadow:isDone?"0 4px 24px "+cat.c+"15":"0 2px 10px rgba(0,0,0,"+(isDark()?".2":".06")+")",
+    padding:"15px 14px 15px 16px", display:"flex", alignItems:"center", gap:"12px", transition:"all .3s"
+  }, [
+    div({position:"absolute",top:0,right:0,width:3,height:"100%",borderRadius:"0 20px 20px 0",background:isDone?cat.c:t.bdr,transition:"background .3s"}, null),
+    togBtn,
+    div({flex:1,minWidth:0}, [nameRow, trail]),
+    menuBtn
+  ]);
+  innerCard.style.position = "relative";
+
+  var outerCard = div({position:"relative",marginBottom:9}, [innerCard]);
+
+  // Dropdown menu
+  if (mOpen) {
+    var delBtn = div({padding:"10px 14px",borderRadius:10,cursor:"pointer",color:"#FF6B6B",fontSize:14,fontWeight:600,display:"flex",alignItems:"center",gap:8}, ["🗑 حذف العادة"]);
+    delBtn.addEventListener("click", (function(id){ return function(){ habits = habits.filter(function(h){ return h.id!==id; }); saveHabits(); menuOpenId=null; rerender(); }; })(hab.id));
+    var dropdown = div({
+      position:"absolute",left:8,top:"calc(100% + 5px)",background:t.card,
+      border:"1px solid "+t.bdr,borderRadius:14,padding:5,zIndex:60,minWidth:155,
+      boxShadow:"0 12px 36px rgba(0,0,0,"+(isDark()?".55":".18")+")"
+    }, [delBtn], "pop");
+    dropdown.addEventListener("click", function(e){ e.stopPropagation(); });
+    outerCard.appendChild(dropdown);
+  }
+
+  return outerCard;
+}
+
+// ═══ STATS ═══
+function buildStats() {
+  var t = theme();
+  var avgRate = 0, bestStr = 0, totalC = 0;
+  for (var i = 0; i < habits.length; i++) {
+    var s = calcStreak(habits[i].c);
+    avgRate += s.rate;
+    if (s.best > bestStr) bestStr = s.best;
+    var keys = Object.keys(habits[i].c);
+    for (var j = 0; j < keys.length; j++) if (habits[i].c[keys[j]]) totalC++;
+  }
+  avgRate = habits.length ? Math.round(avgRate / habits.length) : 0;
+  var insight = avgRate>=85 ? "🏆 أداء استثنائي! أنت في أعلى 10%" : avgRate>=70 ? "🌟 أداء ممتاز، واصل هذا المسار" : avgRate>=50 ? "💡 أداء جيد، ركّز على السلاسل" : "🌱 كل رحلة تبدأ بخطوة";
+
+  // Weekly bars
+  var week = [];
+  for (var wi = 0; wi < 7; wi++) {
+    var d = ago(6-wi), dt = new Date(d), dn = 0;
+    for (var hi = 0; hi < habits.length; hi++) if (habits[hi].c[d]) dn++;
+    week.push({day:DAYS[dt.getDay()], pct:habits.length?Math.round(dn/habits.length*100):0, isToday:d===today()});
+  }
+  var bW=28, bGap=12, cW=7*(bW+bGap)-bGap, cH=110;
+  var svgKids = [];
+  for (var si = 0; si < week.length; si++) {
+    var bh = Math.max(4, week[si].pct/100*cH);
+    var x = 15+si*(bW+bGap), y = cH-bh;
+    var fill = week[si].isToday ? "#4ECDC4" : week[si].pct>=80 ? "#B39DDB" : week[si].pct>=50 ? "#FFD93D" : t.surf;
+    svgKids.push(svgEl("rect",{x:x,y:y,width:bW,height:bh,rx:7,fill:fill}));
+    var lbl = svgEl("text",{x:x+bW/2, y:cH+18, "text-anchor":"middle", fill:t.sub});
+    lbl.style.cssText="font-size:10px;font-family:Tajawal"; lbl.textContent=week[si].day;
+    svgKids.push(lbl);
+  }
+  var wSvg = makeSvg(cW+30, cH+28, svgKids);
+  wSvg.style.width="100%"; wSvg.style.height="auto"; wSvg.setAttribute("viewBox","0 0 "+(cW+30)+" "+(cH+28));
+
+  // Heatmap
+  var hmDots = [];
+  for (var hmi = 0; hmi < 30; hmi++) {
+    var hd = ago(29-hmi), hdn = 0;
+    for (var hhi = 0; hhi < habits.length; hhi++) if (habits[hhi].c[hd]) hdn++;
+    var hp = habits.length ? hdn/habits.length : 0;
+    var hIsToday = hd===today();
+    hmDots.push(div({aspectRatio:"1",borderRadius:6,border:hIsToday?"2px solid #4ECDC4":"none",
+      background:hp===0?t.surf:hp<.4?"#FFD93D35":hp<.75?"#4ECDC455":"#4ECDC4"}, null));
+  }
+
+  // Per-habit rows
+  var habitRows = [];
+  for (var hri = 0; hri < habits.length; hri++) {
+    var h = habits[hri], cat = CATS[h.cat], hs = calcStreak(h.c);
+    habitRows.push(div({background:t.card,borderRadius:18,border:"1px solid "+t.bdr,padding:"15px",marginBottom:9}, [
+      div({display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}, [
+        div({display:"flex",alignItems:"center",gap:"10px"}, [
+          div({width:42,height:42,borderRadius:12,background:cat.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:21}, [h.icon]),
+          div({}, [span(h.name,{fontSize:13,fontWeight:700,color:t.tx,display:"block"}), span(cat.l,{fontSize:10,color:t.sub,display:"block"})])
+        ]),
+        div({display:"flex",gap:"12px",textAlign:"center"}, [
+          div({}, [span("🔥"+hs.cur,{fontSize:14,fontWeight:800,color:cat.c,display:"block"}), span("حالية",{fontSize:8,color:t.sub,display:"block"})]),
+          div({}, [span(hs.best,{fontSize:14,fontWeight:800,color:t.tx,display:"block"}), span("أفضل",{fontSize:8,color:t.sub,display:"block"})]),
+          div({}, [span(hs.rate+"%",{fontSize:14,fontWeight:800,color:t.tx,display:"block"}), span("٣٠ي",{fontSize:8,color:t.sub,display:"block"})])
+        ])
+      ]),
+      div({background:t.surf,borderRadius:4,height:5,overflow:"hidden"}, [
+        div({width:hs.rate+"%",height:"100%",background:"linear-gradient(90deg,"+cat.c+"50,"+cat.c+")",borderRadius:4,transition:"width 1s ease"}, null)
+      ])
+    ]));
+  }
+
+  var wrapper = div({padding:"56px 0 20px"}, null, "fade");
+  wrapper.appendChild(div({padding:"0 20px 16px"}, [
+    span("التحليلات 📊", {fontSize:24,fontWeight:900,color:t.tx,display:"block"}),
+    span("نظرة شاملة على أدائك", {fontSize:12,color:t.sub,display:"block",marginTop:3})
+  ]));
+  wrapper.appendChild(div({padding:"0 14px 16px"}, [
+    div({background:isDark()?"linear-gradient(135deg,#1A1A2E,#16213E)":"linear-gradient(135deg,#EEF2FF,#E8F0FF)",borderRadius:18,padding:"14px 16px",border:"1px solid "+(isDark()?"#2A2A5A":"#C8D0FF"),fontSize:13,color:t.tx,lineHeight:1.7,fontWeight:600}, [insight])
+  ]));
+  wrapper.appendChild(div({display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"9px",padding:"0 14px 16px"}, [
+    div({background:isDark()?"linear-gradient(145deg,"+t.card+","+t.surf+")":"linear-gradient(145deg,#fff,#f2f2ff)",borderRadius:20,border:"1px solid "+t.bdr,padding:"16px 10px",textAlign:"center"}, [span("📊",{fontSize:26,display:"block",marginBottom:7}),span(avgRate+"%",{fontSize:20,fontWeight:900,color:t.tx,display:"block"}),span("معدل ٣٠ يوم",{fontSize:9,color:t.sub,display:"block",marginTop:3})]),
+    div({background:isDark()?"linear-gradient(145deg,"+t.card+","+t.surf+")":"linear-gradient(145deg,#fff,#f2f2ff)",borderRadius:20,border:"1px solid "+t.bdr,padding:"16px 10px",textAlign:"center"}, [span("🔥",{fontSize:26,display:"block",marginBottom:7}),span(bestStr,{fontSize:20,fontWeight:900,color:t.tx,display:"block"}),span("أفضل سلسلة",{fontSize:9,color:t.sub,display:"block",marginTop:3})]),
+    div({background:isDark()?"linear-gradient(145deg,"+t.card+","+t.surf+")":"linear-gradient(145deg,#fff,#f2f2ff)",borderRadius:20,border:"1px solid "+t.bdr,padding:"16px 10px",textAlign:"center"}, [span("✅",{fontSize:26,display:"block",marginBottom:7}),span(totalC,{fontSize:20,fontWeight:900,color:t.tx,display:"block"}),span("إجمالي",{fontSize:9,color:t.sub,display:"block",marginTop:3})])
+  ]));
+  wrapper.appendChild(div({padding:"0 14px 16px"}, [
+    div({background:t.card,borderRadius:20,border:"1px solid "+t.bdr,padding:"18px"}, [
+      span("الإنجاز الأسبوعي", {fontSize:14,fontWeight:700,color:t.tx,display:"block",marginBottom:14}),
+      wSvg
+    ])
+  ]));
+  wrapper.appendChild(div({padding:"0 14px 16px"}, [
+    div({background:t.card,borderRadius:20,border:"1px solid "+t.bdr,padding:"18px"}, [
+      span("خريطة آخر ٣٠ يوماً", {fontSize:14,fontWeight:700,color:t.tx,display:"block",marginBottom:12}),
+      div({display:"grid",gridTemplateColumns:"repeat(10,1fr)",gap:"5px"}, hmDots),
+      div({display:"flex",gap:"12px",marginTop:10,justifyContent:"flex-end"}, [
+        div({display:"flex",alignItems:"center",gap:3},[div({width:9,height:9,borderRadius:2,background:t.surf,flexShrink:0},null),span("أقل",{fontSize:9,color:t.sub})]),
+        div({display:"flex",alignItems:"center",gap:3},[div({width:9,height:9,borderRadius:2,background:"#FFD93D35",flexShrink:0},null),span("متوسط",{fontSize:9,color:t.sub})]),
+        div({display:"flex",alignItems:"center",gap:3},[div({width:9,height:9,borderRadius:2,background:"#4ECDC455",flexShrink:0},null),span("جيد",{fontSize:9,color:t.sub})]),
+        div({display:"flex",alignItems:"center",gap:3},[div({width:9,height:9,borderRadius:2,background:"#4ECDC4",flexShrink:0},null),span("ممتاز",{fontSize:9,color:t.sub})])
+      ])
+    ])
+  ]));
+  wrapper.appendChild(div({padding:"0 14px"}, [span("أداء كل عادة", {fontSize:14,fontWeight:700,color:t.tx,display:"block",marginBottom:10})].concat(habitRows)));
+  return wrapper;
+}
+
+// ═══ ADD HABIT ═══
+function buildAdd() {
+  var t = theme(), cat = CATS[draft.cat];
+  var stepTitles = ["اسم العادة والفئة","الأيقونة والتكرار","التوقيت والتكديس"];
+  var stepSubs   = ["ما العادة التي تريد بناءها؟","كيف تريد ممارستها؟","متى وبعد أي عادة؟"];
+  var inpSt = {width:"100%",padding:"13px 15px",background:t.inp,border:"1.5px solid "+t.bdr,borderRadius:14,color:t.tx,fontSize:15,outline:"none",direction:"rtl"};
+
+  var stepDotEls = [];
+  for (var si = 1; si <= 3; si++) stepDotEls.push(div({height:4,flex:1,borderRadius:3,background:si<=currentStep?cat.c:t.surf,transition:"background .3s"},null));
+  var stepDots = div({display:"flex",gap:"7px",marginTop:14}, stepDotEls);
+
+  var content = div({}, null);
+
+  if (currentStep === 1) {
+    var inp = document.createElement("input");
+    inp.placeholder = "مثال: تمرين الصباح";
+    Object.assign(inp.style, inpSt);
+    inp.value = draft.name;
+    inp.addEventListener("input", function(e){ draft.name = e.target.value; refreshAddContent(); });
+    setTimeout(function(){ inp.focus(); }, 60);
+
+    var catGrid = div({display:"grid",gridTemplateColumns:"1fr 1fr",gap:"9px"}, null);
+    var catKeys = Object.keys(CATS);
+    for (var ci = 0; ci < catKeys.length; ci++) {
+      (function(k) {
+        var v = CATS[k];
+        var c = div({background:draft.cat===k?v.bg:t.card,border:"2px solid "+(draft.cat===k?v.c:t.bdr),borderRadius:16,padding:"15px 13px",display:"flex",alignItems:"center",gap:"9px",cursor:"pointer",transition:"all .2s"}, [span(v.e,{fontSize:22}),span(v.l,{fontSize:12,fontWeight:700,color:draft.cat===k?v.c:t.tx})]);
+        c.addEventListener("click", function(){ draft.cat=k; draft.icon=ICONS[k][0]; rerender(); });
+        catGrid.appendChild(c);
+      })(catKeys[ci]);
+    }
+    content.appendChild(inp);
+    content.appendChild(span("اختر الفئة",{fontSize:12,color:t.sub,display:"block",margin:"18px 0 10px"}));
+    content.appendChild(catGrid);
+
+  } else if (currentStep === 2) {
+    var iconGrid = div({display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:22}, null);
+    var icons = ICONS[draft.cat];
+    for (var ii = 0; ii < icons.length; ii++) {
+      (function(ic) {
+        var c = div({width:52,height:52,borderRadius:14,fontSize:24,display:"flex",alignItems:"center",justifyContent:"center",background:draft.icon===ic?cat.bg:t.surf,border:"2px solid "+(draft.icon===ic?cat.c:t.bdr),cursor:"pointer",transition:"all .2s",transform:draft.icon===ic?"scale(1.1)":"scale(1)"}, [ic]);
+        c.addEventListener("click", function(){ draft.icon=ic; rerender(); });
+        iconGrid.appendChild(c);
+      })(icons[ii]);
+    }
+    content.appendChild(span("اختر أيقونة",{fontSize:12,color:t.sub,display:"block",marginBottom:10}));
+    content.appendChild(iconGrid);
+    content.appendChild(span("التكرار",{fontSize:12,color:t.sub,display:"block",marginBottom:10}));
+    var freqs = [{id:"daily",l:"يومياً",d:"كل يوم"},{id:"weekdays",l:"أيام العمل",d:"الإثنين → الجمعة"},{id:"weekends",l:"نهاية الأسبوع",d:"الجمعة والسبت"}];
+    for (var fi = 0; fi < freqs.length; fi++) {
+      (function(f){
+        var c = div({background:draft.freq===f.id?cat.bg:t.card,border:"2px solid "+(draft.freq===f.id?cat.c:t.bdr),borderRadius:14,padding:"13px 15px",marginBottom:8,cursor:"pointer",transition:"all .2s",display:"flex",justifyContent:"space-between",alignItems:"center"}, [span(f.l,{fontSize:14,fontWeight:600,color:t.tx}),span(f.d,{fontSize:11,color:t.sub})]);
+        c.addEventListener("click", function(){ draft.freq=f.id; rerender(); });
+        content.appendChild(c);
+      })(freqs[fi]);
+    }
+
+  } else {
+    var ti = document.createElement("input");
+    ti.type = "time"; ti.value = draft.time;
+    Object.assign(ti.style, inpSt); ti.style.marginBottom="20px"; ti.style.colorScheme=isDark()?"dark":"light";
+    ti.addEventListener("change", function(e){ draft.time=e.target.value; });
+    content.appendChild(span("وقت التذكير الذكي",{fontSize:12,color:t.sub,display:"block",marginBottom:8}));
+    content.appendChild(div({background:t.surf,borderRadius:11,padding:"9px 13px",marginBottom:10,fontSize:11,color:t.sub,lineHeight:1.8}, ["🧠 سيتكيف التذكير مع وقت التزامك الفعلي"]));
+    content.appendChild(ti);
+    content.appendChild(span("تكديس العادات",{fontSize:12,color:t.sub,display:"block",marginBottom:8}));
+    content.appendChild(div({background:t.surf,borderRadius:11,padding:"9px 13px",marginBottom:12,fontSize:11,color:t.sub,lineHeight:1.8}, ["💡 ربط عادة جديدة بعادة موجودة يرفع الالتزام 80%"]));
+    var stackOptions = [null].concat(habits);
+    for (var oi = 0; oi < stackOptions.length; oi++) {
+      (function(hb){
+        var sel = draft.after === (hb ? hb.id : null);
+        var kids = [span(hb?hb.icon:"🆓",{fontSize:21}), div({},[span(hb?"بعد: "+hb.name:"بدون تكديس",{fontSize:13,fontWeight:600,color:t.tx,display:"block"})])];
+        var c = div({background:sel?cat.bg:t.card,border:"2px solid "+(sel?cat.c:t.bdr),borderRadius:14,padding:"12px 15px",marginBottom:8,cursor:"pointer",transition:"all .2s",display:"flex",alignItems:"center",gap:"11px"}, kids);
+        c.addEventListener("click", function(){ draft.after=hb?hb.id:null; rerender(); });
+        content.appendChild(c);
+      })(stackOptions[oi]);
+    }
+  }
+
+  var canNext = currentStep !== 1 || draft.name.trim().length > 0;
+  var nextBtnLabel = currentStep < 3 ? "التالي ←" : "✓ حفظ العادة";
+  var nextB = div({flex:2,padding:"13px",borderRadius:14,fontSize:14,fontWeight:700,cursor:canNext?"pointer":"not-allowed",background:canNext?cat.c:t.surf,color:canNext?"#0A0A12":t.sub,textAlign:"center",transition:"all .2s",opacity:canNext?1:.5}, [nextBtnLabel]);
+  nextB.addEventListener("click", function(){
+    if (!canNext) return;
+    if (currentStep < 3) { currentStep++; rerender(); }
+    else {
+      if (!draft.name.trim()) return;
+      habits.push({id:"h"+Date.now(), name:draft.name, cat:draft.cat, icon:draft.icon, freq:draft.freq, time:draft.time, after:draft.after, c:{}, ts:Date.now()});
+      saveHabits();
+      currentTab="home"; currentStep=1; draft={name:"",cat:"health",icon:"🏃",freq:"daily",time:"08:00",after:null};
+      rerender();
+    }
+  });
+
+  var btnsRow = div({display:"flex",gap:"9px",marginTop:22}, null);
+  if (currentStep > 1) {
+    var prevB = div({flex:1,padding:"13px",borderRadius:14,fontSize:14,fontWeight:700,cursor:"pointer",background:t.surf,border:"1px solid "+t.bdr,color:t.sub,textAlign:"center"}, ["← السابق"]);
+    prevB.addEventListener("click", function(){ currentStep--; rerender(); });
+    btnsRow.appendChild(prevB);
+  }
+  btnsRow.appendChild(nextB);
+
+  var cancelB = div({fontSize:13,color:t.sub,cursor:"pointer",marginBottom:10,display:"inline-block"}, ["← إلغاء"]);
+  cancelB.addEventListener("click", function(){ currentTab="home"; currentStep=1; rerender(); });
+
+  var wrapper = div({padding:"56px 0 20px"}, null, "fade");
+  wrapper.appendChild(div({padding:"0 20px 18px"}, [cancelB, span(stepTitles[currentStep-1],{fontSize:22,fontWeight:900,color:t.tx,display:"block"}), span(stepSubs[currentStep-1],{fontSize:12,color:t.sub,display:"block",marginTop:3}), stepDots]));
+  wrapper.appendChild(div({padding:"0 14px"}, [content, btnsRow]));
+  return wrapper;
+}
+
+function refreshAddContent() {
+  // lightweight update without full rerender
+  var content = document.getElementById("add-content");
+  if (content) {
+    var inp = content.querySelector("input");
+    if (inp && inp.type !== "time") { /* keep cursor position */ }
+  }
+}
+
+// ═══ NAV BAR ═══
+function buildNav() {
+  var t = theme();
+  var nav = document.createElement("nav");
+  Object.assign(nav.style, {position:"absolute",bottom:0,left:0,right:0,background:isDark()?t.nav+"F2":t.nav+"F5",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",borderTop:"1px solid "+t.bdr,display:"flex",justifyContent:"space-around",alignItems:"center",paddingTop:"9px",paddingBottom:"18px",zIndex:100});
+
+  var homeB = document.createElement("button");
+  homeB.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><br><span style="font-size:10px">الرئيسية</span>';
+  Object.assign(homeB.style, {background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",color:currentTab==="home"?"#4ECDC4":t.sub,fontWeight:700,padding:"4px 20px",transition:"color .2s",cursor:"pointer",fontFamily:"Tajawal"});
+  homeB.addEventListener("click", function(){ currentTab="home"; menuOpenId=null; rerender(); });
+
+  var addB = document.createElement("button");
+  addB.textContent = "+";
+  Object.assign(addB.style, {width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#4ECDC4,#3DBDB5)",border:"none",cursor:"pointer",fontSize:28,color:"#0A0A12",transform:"translateY(-12px)",boxShadow:"0 6px 26px rgba(78,205,196,.5),0 2px 8px rgba(0,0,0,.28)",flexShrink:0,fontFamily:"Tajawal"});
+  addB.addEventListener("click", function(){ currentTab="add"; currentStep=1; draft={name:"",cat:"health",icon:"🏃",freq:"daily",time:"08:00",after:null}; menuOpenId=null; rerender(); });
+
+  var statsB = document.createElement("button");
+  statsB.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><br><span style="font-size:10px">إحصائيات</span>';
+  Object.assign(statsB.style, {background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",color:currentTab==="stats"?"#4ECDC4":t.sub,fontWeight:700,padding:"4px 20px",transition:"color .2s",cursor:"pointer",fontFamily:"Tajawal"});
+  statsB.addEventListener("click", function(){ currentTab="stats"; menuOpenId=null; rerender(); });
+
+  nav.appendChild(homeB); nav.appendChild(addB); nav.appendChild(statsB);
+  return nav;
+}
+
+// ═══ TOGGLE HABIT ═══
+function toggleHabit(id) {
+  var td = today();
+  for (var i = 0; i < habits.length; i++) {
+    if (habits[i].id === id) {
+      var was = !!habits[i].c[td];
+      if (was) delete habits[i].c[td]; else habits[i].c[td] = true;
+      if (!was) {
+        if (flashTimer) clearTimeout(flashTimer);
+        flashId = id;
+        flashTimer = setTimeout(function(){ flashId=null; rerender(); }, 1600);
+      }
+      break;
+    }
+  }
+  saveHabits();
+  rerender();
+}
+
+// ═══ MAIN RENDER ═══
+function rerender() {
+  var app = document.getElementById("app");
+  var t = theme();
+  app.innerHTML = "";
+  app.style.background = t.bg;
+  app.style.color = t.tx;
+
+  var shell = div({width:"100%",maxWidth:430,height:"100vh",display:"flex",flexDirection:"column",position:"relative",background:t.bg}, null);
+  var scroll = div({flex:1,overflowY:"auto",paddingBottom:"90px"}, null);
+
+  if (currentTab === "home")       scroll.appendChild(buildHome());
+  else if (currentTab === "stats") scroll.appendChild(buildStats());
+  else                             scroll.appendChild(buildAdd());
+
+  if (menuOpenId) {
+    document.addEventListener("click", function handler(){
+      if (menuOpenId) { menuOpenId=null; rerender(); }
+      document.removeEventListener("click", handler);
+    });
+  }
+
+  shell.appendChild(scroll);
+  shell.appendChild(buildNav());
+  app.appendChild(shell);
+}
+
+window.matchMedia("(prefers-color-scheme:dark)").addEventListener("change", function(){ rerender(); });
+rerender();
 </script>
 </body>
 </html>
